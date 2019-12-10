@@ -1,0 +1,4 @@
+- name: Create Azure Service Bus instance
+  azure_rm_servicebus:
+    name: message_queue
+    resource_group: {{ resource_group }}

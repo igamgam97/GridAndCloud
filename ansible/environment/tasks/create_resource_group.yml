@@ -1,0 +1,7 @@
+- task:
+  azure_rm_resourcegroup:
+    name: {{ resource_group }}
+    location: westeurope
+    tags:
+      delete: never
+      environment: prod
