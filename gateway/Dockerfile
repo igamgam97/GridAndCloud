@@ -1,6 +1,6 @@
 FROM python:3.8.0
 
-ADD . /app
+ADD app.py, requirements.txt /app/
 
 WORKDIR /app
 
