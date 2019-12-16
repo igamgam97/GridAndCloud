@@ -56,14 +56,13 @@ def run_azure_start_container(conn_string: str, rand: str):
         "webapp",
         "create",
         "-n",
-        f"app_{rand}",
+        f"app-{rand}",
         "-p",
         "base-service-plan",
         "-g",
         "base-resource-group",
         "-i",
         "igamgam97/detekt",
-        f"conn_string={conn_string}",
     ]
     try:
         run_azure(command)
@@ -75,8 +74,9 @@ def run_azure_start_container(conn_string: str, rand: str):
 def run_azure_destroy_container(rand: str):
     command = [
         "webapp",
-        "--name",
-        f"app_{rand}",
+        "delete",
+        "-n",
+        f"app-{rand}",
         "-g",
         "base-resource-group",
     ]
@@ -107,7 +107,7 @@ def delete_receive_queue(auth_uid: str, conn_string: str):
         sys.exit(1)
 
 
-async def wait_result(auth_uid: str, conn_string: str) -> Dict[str, str]:
+def wait_result(auth_uid: str, conn_string: str) -> Dict[str, str]:
     q = QueueClient.from_connection_string(conn_string, auth_uid)
     with q.get_receiver() as qr:
         messages = qr.fetch_next(timeout=30)
