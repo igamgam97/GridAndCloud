@@ -15,9 +15,12 @@ from typing import Tuple, Dict, List
 app = Flask(__name__)
 
 
+def run_azure(command: List[str]):
+    get_default_cli().invoke(command)
+
 @app.route('/', methods=["POST"])
 def handle():
-    auth_uid, repo = parse_params(request)
+    auth_uid, repo = parse_params()
     google_id = os.getenv("GOOGLE_ID")
     if auth_uid != google_id:  # type: ignore
         raise Forbidden()
@@ -53,6 +56,14 @@ def parse_params() -> Tuple[str, str]:
         raise BadRequest()
 
 
+def update_access_token():
+    command = [
+        "account",
+        "get-access-token"
+    ]
+    run_azure(command)
+
+
 def run_azure_start_container(conn_string: str, rand: str):
     command = [
         "webapp",
@@ -66,11 +77,7 @@ def run_azure_start_container(conn_string: str, rand: str):
         "-i",
         "igamgam97/detekt",
     ]
-    try:
-        run_azure(command)
-    except Exception:
-        logging.error("something wrong in bash command")
-        sys.exit(1)
+    run_azure(command)
 
 
 def run_azure_destroy_container(rand: str):
@@ -82,11 +89,7 @@ def run_azure_destroy_container(rand: str):
         "-g",
         "base-resource-group",
     ]
-    try:
-        run_azure(command)
-    except Exception:
-        logging.error("something wrong in bash command")
-        sys.exit(1)
+    run_azure(command)
 
 
 def send_to_mq(auth_uid: str, message: Dict[str, str], conn_string: str):
@@ -97,7 +100,11 @@ def send_to_mq(auth_uid: str, message: Dict[str, str], conn_string: str):
 
 def create_recieve_queue(auth_uid: str, conn_string: str):
     sbc = ServiceBusClient.from_connection_string(conn_string)
-    if not sbc.create_queue(auth_uid):
+    try:
+        sbc.create_queue(auth_uid)
+    except AzureConflictHttpError:
+        pass
+    except Exception:
         logging.error("cannot create queue")
         sys.exit(1)
 
@@ -124,8 +131,5 @@ if __name__ == "__main__":
         create_recieve_queue('incoming', conn)
     except AzureConflictHttpError:
         pass
-    app.run(port=8080)
-
-
-def run_azure(command: List[str]):
-    get_default_cli().invoke(command)
+    app.config['DEBUG'] = True
+    app.run(port=8080, host='0.0.0.0')
