@@ -2,41 +2,43 @@ import json
 import logging
 import sys
 import os
-import subprocess
 from flask import Flask, request, make_response
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden
 import uuid
 
 from azure.cli.core import get_default_cli
+from azure.common import AzureConflictHttpError
 from azure.servicebus import ServiceBusClient, QueueClient, Message
 
 from typing import Tuple, Dict, List
 
-app = Flask(__main__)
+app = Flask(__name__)
+
 
 @app.route('/', methods=["POST"])
-def handle(request: Request):
+def handle():
     auth_uid, repo = parse_params(request)
-    if auth_uid != "jiGVe0bRMBeo1BpYme0BjTiD2pC2":  # type: ignore
-        raise HTTPForbidden()
+    google_id = os.getenv("GOOGLE_ID")
+    if auth_uid != google_id:  # type: ignore
+        raise Forbidden()
 
     base_user_dict: Dict[str, str] = {
         "user_uid": auth_uid,
         "repo_addr": repo,
     }
-    from .conn_string import conn_string
-    
-    create_recieve_queue(auth_uid, conn_string)
+    from conn_string import conn
 
-    send_to_mq(auth_uid, base_user_dict, conn_string)
+    create_recieve_queue(auth_uid, conn)
+
+    send_to_mq(auth_uid, base_user_dict, conn)
 
     random_str = str(uuid.uuid4())
 
-    run_azure_start_container(conn_string, random_str)
+    run_azure_start_container(conn, random_str)
 
-    result = wait_result(auth_uid, conn_string)
+    result = wait_result(auth_uid, conn)
 
-    delete_receive_queue(auth_uid, conn_string)
+    delete_receive_queue(auth_uid, conn)
     run_azure_destroy_container(random_str)
 
     return make_response(result)
@@ -48,7 +50,7 @@ def parse_params() -> Tuple[str, str]:
     if auth_uid and repo:
         return auth_uid, repo
     else:
-        raise BadRequest(text="No options auth_uid or repo!")
+        raise BadRequest()
 
 
 def run_azure_start_container(conn_string: str, rand: str):
@@ -117,8 +119,13 @@ def wait_result(auth_uid: str, conn_string: str) -> Dict[str, str]:
 
 
 if __name__ == "__main__":
-    app.run()
+    from conn_string import conn
+    try:
+        create_recieve_queue('incoming', conn)
+    except AzureConflictHttpError:
+        pass
+    app.run(port=8080)
 
 
-def run_azure(command: List[str]) -> str:
-    response = get_default_cli().invoke(command)
+def run_azure(command: List[str]):
+    get_default_cli().invoke(command)

@@ -13,7 +13,7 @@ COPY --from=detekt-cli /detekt/detekt-cli /detekt
 
 VOLUME /src
 
-ADD main.py requirements.txt /app/
+ADD main.py requirements.txt conn_string.py /app/
 
 WORKDIR /app
 

@@ -1,6 +1,5 @@
 import logging
 import sys
-import os
 import subprocess
 import json
 from typing import Dict, List
@@ -32,8 +31,8 @@ def send_message(channel: str, out_message: Dict[str, str], conn_string: str):
 
 if __name__ == "__main__":
     channel = "incoming"
-    from .conn_string import conn_string
-    message = get_message(channel, conn_string)
+    from conn_string import conn
+    message = get_message(channel, conn)
     try:
         out_channel_name = message["auth_uid"]
         repo = message["repo"]
@@ -66,5 +65,5 @@ if __name__ == "__main__":
     with open("/result.html") as html:
         result = html.read()
         out_message = {"result": result}
-        send_message(out_channel_name, out_message, conn_string)
+        send_message(out_channel_name, out_message, conn)
     sys.exit(0)

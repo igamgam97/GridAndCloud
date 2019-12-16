@@ -1,14 +1,14 @@
 FROM debian:buster-slim
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc python3 python3-pip python3-setuptools \
-    && rm -rf /var/lib/apt/lists/*
-
-ADD service/* app.py requirements.txt /app/
+ADD app.py requirements.txt conn_string.py /app/
 
 ADD azure /root/.azure
 
 WORKDIR /app
+
+RUN apt-get update && apt install -y gcc python3-setuptools python3-pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8080
 
