@@ -122,6 +122,3 @@ if __name__ == "__main__":
 
 def run_azure(command: List[str]) -> str:
     response = get_default_cli().invoke(command)
-    if response:
-        return response
-    raise Exception()
