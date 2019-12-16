@@ -1,0 +1,5 @@
+all:
+  vars:
+    plan: base-service-plan
+    resource_group: base-resource-group
+    sha256: c6c0efdfbd

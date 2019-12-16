@@ -1,0 +1,13 @@
+- hosts: localhost
+  tasks:
+    - name: Create resource group
+      import_tasks: ./tasks/create_resource_group.yml
+    
+    - name: Create service bus
+      import_tasks: ./tasks/create_service_bus.yml
+
+    - name: Create service plan
+      import_tasks: ./tasks/create_linux_service_plan.yml
+    
+    #- name: Create main app
+    #  import_tasks: ./tasks/create_base_app.yml

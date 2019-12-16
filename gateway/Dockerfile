@@ -1,10 +1,14 @@
-FROM python:3.8.0
+FROM debian:buster-slim
 
-ADD app.py, requirements.txt /app/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc python3 python3-pip python3-setuptools \
+    && rm -rf /var/lib/apt/lists/*
+
+ADD service/* app.py requirements.txt /app/
+
+ADD azure /root/.azure
 
 WORKDIR /app
-
-RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
 

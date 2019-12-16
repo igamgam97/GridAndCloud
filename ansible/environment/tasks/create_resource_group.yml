@@ -1,6 +1,6 @@
-- task:
+- name: Create resource group
   azure_rm_resourcegroup:
-    name: {{ resource_group }}
+    name: "{{ resource_group }}"
     location: westeurope
     tags:
       delete: never

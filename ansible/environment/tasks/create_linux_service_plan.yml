@@ -1,7 +1,7 @@
 - name: Create Linux service plan
   azure_rm_appserviceplan:
-    name: base_service_plan
+    name: "{{ plan }}"
     resource_group: "{{ resource_group }}"
     sku: F1
     is_linux: true
-    number_of_worker: 1
+    number_of_workers: 1

@@ -1,0 +1,17 @@
+- hosts: localhost
+  tasks:
+    - name: Create web app with detekt
+      azure_rm_webapp:
+        app_state: stopped
+        resource_group: "{{ resource_group }}"
+        name: "app_{{ random }}"
+        plan:
+          resource_group: "{{ app_service_plan }}"
+          name: "{{ plan }}"
+          sku: F1
+          is_linux: true
+          number_of_workers: 1
+        app_settings:
+          CONN_STRING: "{{ conn_string }}"
+        container_settings:
+          name: igamgam97/detekt-app
