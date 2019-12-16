@@ -32,7 +32,7 @@ def send_message(channel: str, out_message: Dict[str, str], conn_string: str):
 
 if __name__ == "__main__":
     channel = "incoming"
-    conn_string: str = os.getenv("CONN_STRING")
+    from .conn_string import conn_string
     message = get_message(channel, conn_string)
     try:
         out_channel_name = message["auth_uid"]

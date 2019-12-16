@@ -3,22 +3,20 @@ import logging
 import sys
 import os
 import subprocess
-from aiohttp import web
-from aiohttp.web import (
-    Request,
-    HTTPBadRequest,
-    HTTPForbidden,
-    WebSocketResponse,
-)
+from flask import Flask, request, make_response
+from werkzeug.exceptions import BadRequest
 import uuid
 
+from azure.cli.core import get_default_cli
 from azure.servicebus import ServiceBusClient, QueueClient, Message
 
 from typing import Tuple, Dict, List
 
+app = Flask(__main__)
 
-async def handle(request: Request):
-    auth_uid, repo = await parse_params(request)
+@app.route('/', methods=["POST"])
+def handle(request: Request):
+    auth_uid, repo = parse_params(request)
     if auth_uid != "jiGVe0bRMBeo1BpYme0BjTiD2pC2":  # type: ignore
         raise HTTPForbidden()
 
@@ -26,70 +24,64 @@ async def handle(request: Request):
         "user_uid": auth_uid,
         "repo_addr": repo,
     }
-    conn_string: str = os.getenv("CONN_STRING")
-    ws: WebSocketResponse = WebSocketResponse()
-    await ws.prepare(request)
-
-    ws.send_str(json.dumps({"status": "CREATE QUEUE..."}))
+    from .conn_string import conn_string
+    
     create_recieve_queue(auth_uid, conn_string)
 
-    ws.send_str(json.dumps({"status": "SENDING MESSAGE..."}))
     send_to_mq(auth_uid, base_user_dict, conn_string)
 
     random_str = str(uuid.uuid4())
 
-    ws.send_str(json.dumps({"status": "CREATE CONTAINER FOR YOU..."}))
-    run_ansible_start_container(conn_string, random_str)
+    run_azure_start_container(conn_string, random_str)
 
-    ws.send_str(json.dumps({"status": "PROCESSING..."}))
-    result = await wait_result(auth_uid, conn_string)
+    result = wait_result(auth_uid, conn_string)
 
-    ws.send_str(json.dumps({"status": "RESULT READY. DELETE CONTAINER..."}))
     delete_receive_queue(auth_uid, conn_string)
-    run_ansible_destroy_container(random_str)
+    run_azure_destroy_container(random_str)
 
-    ws.send_str(json.dumps({"status": "DONE"}.update(result)))
-
-    ws.close()
-    return ws
+    return make_response(result)
 
 
-async def parse_params(request: Request) -> Tuple[str, str]:
-    body = await request.json()
+def parse_params() -> Tuple[str, str]:
+    body = request.json
     auth_uid, repo = body.get("user_id"), body.get("repo_addr")
     if auth_uid and repo:
         return auth_uid, repo
     else:
-        raise HTTPBadRequest(text="No options auth_uid or repo!")
+        raise BadRequest(text="No options auth_uid or repo!")
 
 
-async def run_ansible_start_container(conn_string: str, rand: str):
+def run_azure_start_container(conn_string: str, rand: str):
     command = [
-        "ansible-playbook",
+        "webapp",
+        "create",
+        "-n",
+        f"app_{rand}",
+        "-p",
+        "base-service-plan",
+        "-g",
+        "base-resource-group",
         "-i",
-        "/app/inventory.yml",
-        "/app/create_web_app.yml",
-        "--extra-vars",
-        f"conn_string={conn_string} random={rand}",
+        "igamgam97/detekt",
+        f"conn_string={conn_string}",
     ]
     try:
-        run_sh(command)
+        run_azure(command)
     except Exception:
         logging.error("something wrong in bash command")
         sys.exit(1)
 
 
-async def run_ansible_destroy_container(rand: str):
+def run_azure_destroy_container(rand: str):
     command = [
-        "ansible-playbook",
-        "-i",
-        "/app/inventory.yml",
-        "/app/destroy_web_app.yml",
-        "--extra-vars",
-        f"random={rand}",
+        "webapp",
+        "--name",
+        f"app_{rand}",
+        "-g",
+        "base-resource-group",
     ]
     try:
-        run_sh(command)
+        run_azure(command)
     except Exception:
         logging.error("something wrong in bash command")
         sys.exit(1)
@@ -117,21 +109,19 @@ def delete_receive_queue(auth_uid: str, conn_string: str):
 
 async def wait_result(auth_uid: str, conn_string: str) -> Dict[str, str]:
     q = QueueClient.from_connection_string(conn_string, auth_uid)
-    async with q.get_receiver() as qr:
-        messages = await qr.fetch_next(timeout=30)
+    with q.get_receiver() as qr:
+        messages = qr.fetch_next(timeout=30)
         message = str(messages[0])
         json_message = json.loads(message)
         return json_message
 
 
 if __name__ == "__main__":
-    app = web.Application()
-    app.add_routes([web.post("/post", handle)])
-    web.run_app(app, port=8080, host="0.0.0.0")
+    app.run()
 
 
-def run_sh(command: List[str]) -> str:
-    result = subprocess.run(command, capture_output=True)
-    if result.stdout:
-        return result.stdout.decode("utf-8")
+def run_azure(command: List[str]) -> str:
+    response = get_default_cli().invoke(command)
+    if response:
+        return response
     raise Exception()
