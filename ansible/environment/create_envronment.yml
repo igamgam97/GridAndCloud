@@ -9,5 +9,5 @@
     - name: Create service plan
       import_tasks: ./tasks/create_linux_service_plan.yml
     
-    #- name: Create main app
-    #  import_tasks: ./tasks/create_base_app.yml
+    - name: Create main app
+      import_tasks: ./tasks/create_base_app.yml

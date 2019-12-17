@@ -130,5 +130,5 @@ dmypy.json
 
 .vscode/
 cred.ini
-conn_string.py
+# conn_string.py
 azure/

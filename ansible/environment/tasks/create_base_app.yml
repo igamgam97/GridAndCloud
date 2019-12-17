@@ -1,7 +1,7 @@
 - name: Create main web app
   azure_rm_webapp:
     resource_group: "{{ resource_group }}"
-    name: "app_main_{{ sha256 }}"
+    name: "mainmainmain"
     plan:
       resource_group: "{{ resource_group }}"
       name: "{{ plan }}"
@@ -9,10 +9,9 @@
       is_linux: true
       number_of_workers: 1
     app_settings:
-      AZURE_SUBSCRIPTION_ID: "{{ az_s_id }}"
-      AZURE_SECRET: "{{ az_s }}"
-      AZURE_CLIENT_ID: "{{ az_c_id }}"
-      AZURE_TENANT: "{{ az_t }}"
-      CONN_STRING: "{{ az_conn }}"
+      GOOGLE_ID: ''
+      APP_ID: ''
+      PASSWORD: ''
+      TENANT: ''
     container_settings:
-      name: igamgam97/base-app
+      name: igamgam97/main-app

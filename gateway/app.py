@@ -6,6 +6,8 @@ from flask import Flask, request, make_response, session, jsonify
 from werkzeug.exceptions import BadRequest, Forbidden
 import uuid
 
+import time
+
 from azure.cli.core import get_default_cli
 from azure.common import AzureConflictHttpError
 from azure.servicebus import ServiceBusClient, QueueClient, Message
@@ -142,7 +144,7 @@ def delete_receive_queue(auth_uid: str, conn_string: str):
 def wait_result(auth_uid: str, conn_string: str) -> Dict[str, str]:
     q = QueueClient.from_connection_string(conn_string, auth_uid)
     with q.get_receiver() as qr:
-        messages = qr.fetch_next(timeout=30)
+        messages = qr.fetch_next(timeout=500)
         message = str(messages[0])
         json_message = json.loads(message)
         return json_message
