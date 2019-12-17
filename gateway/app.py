@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 import os
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, session, jsonify
 from werkzeug.exceptions import BadRequest, Forbidden
 import uuid
 
@@ -18,6 +18,12 @@ app = Flask(__name__)
 def run_azure(command: List[str]):
     get_default_cli().invoke(command)
 
+
+@app.route('/status', methods=['GET'])
+def status():
+    return jsonify(session['status'])
+
+
 @app.route('/', methods=["POST"])
 def handle():
     auth_uid, repo = parse_params()
@@ -31,18 +37,26 @@ def handle():
     }
     from conn_string import conn
 
+    update_access_token()
+
+    session['status'] = {'status': 'SENDING TO QUEUE'}
     create_recieve_queue(auth_uid, conn)
 
     send_to_mq(auth_uid, base_user_dict, conn)
 
     random_str = str(uuid.uuid4())
 
+    session['status'] = {'status': 'UP YOUR CONTAINER'}
     run_azure_start_container(conn, random_str)
 
+    session['status'] = {'status': 'PROCESS YOUR TASK'}
+
     result = wait_result(auth_uid, conn)
+    session['status'] = {'status': 'RECEIVING RESULT'}
 
     delete_receive_queue(auth_uid, conn)
     run_azure_destroy_container(random_str)
+    session['status'] = {'status': 'STOP CONTAINER'}
 
     return make_response(result)
 
@@ -57,9 +71,18 @@ def parse_params() -> Tuple[str, str]:
 
 
 def update_access_token():
+    app_id = os.getenv("APP_ID")
+    password = os.getenv("PASSWORD")
+    tenant = os.getenv("TENANT")
     command = [
-        "account",
-        "get-access-token"
+        "login",
+        "--service-principal",
+        "--username",
+        f"{app_id}",
+        "--password",
+        f"{password}",
+        "--tenant",
+        f"{tenant}"
     ]
     run_azure(command)
 
@@ -75,7 +98,7 @@ def run_azure_start_container(conn_string: str, rand: str):
         "-g",
         "base-resource-group",
         "-i",
-        "igamgam97/detekt",
+        "igamgam97/worker-app",
     ]
     run_azure(command)
 
@@ -132,4 +155,5 @@ if __name__ == "__main__":
     except AzureConflictHttpError:
         pass
     app.config['DEBUG'] = True
+    app.config['SECRET_KEY'] = 'super secret key'
     app.run(port=8080, host='0.0.0.0')
